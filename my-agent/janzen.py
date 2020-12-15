@@ -15,13 +15,14 @@ class Agent:
         self.occupied = []
         self.items = []
         self.bombables = []
-        self.last_bomb = -(BOMB_TIME+1)
+        self.grace_period = BOMB_TIME+1 
+        self.last_bomb = -self.grace_period
         
 
     # Chooses the next action
     def next_move(self, game_state, player_state):
         # Updates the game
-        self.update(game_state)
+        self.update(game_state, player_state)
         if game_state.tick_number == 0:
             self.initialise_all_ores(game_state)
         
@@ -44,9 +45,9 @@ class Agent:
             self.all_ores.append(ore)
         
     
-    # Tries to bomb wooden crates
+    # Tries to bomb stuff
     def next_move_bomb(self, game_state, player_state):
-        if player_state.ammo != 0 and game_state.tick_number - self.last_bomb > BOMB_TIME+1:
+        if player_state.ammo != 0 and game_state.tick_number - self.last_bomb > self.grace_period:
             if player_state.location in self.bombables:
                 self.last_bomb = game_state.tick_number
                 return 'p'
@@ -83,11 +84,14 @@ class Agent:
 
         
     # Updates the parameters of the agent class
-    def update(self, game_state):
+    def update(self, game_state, player_state):
         # Updates the location of all the blocks
         self.occupied = game_state.all_blocks + game_state.bombs + game_state.opponents(0)
         self.items = game_state.ammo + game_state.treasure
         self.update_ore_blocks(game_state)
+        
+        if game_state.soft_blocks == [] and game_state.ore_blocks == []:
+            self.grace_period = 10 # throws a bomb every second
         
         # Updates the target blocks
         # Priority: 1) damaged ore blocks, 2) wood blocks, 3) ore blocks
@@ -96,7 +100,10 @@ class Agent:
             bombables = game_state.soft_blocks
         if bombables == []:
             bombables = game_state.ore_blocks
-        
+        if bombables == []:
+            bombables = game_state.opponents(0)
+            bombables.remove(player_state.location)
+            
         # Gets the neighbours of the target blocks
         self.bombables = self.get_all_neighbours(bombables, game_state)
         
@@ -114,7 +121,7 @@ class Agent:
                 explosion = bomb.get_explosion(game_state)
                 explosions += explosion
                 self.check_ore_blocks(explosion, game_state)
-                self.check_other_bombs(bomb.get_pos(), explosion, game_state)
+                self.check_other_bombs(bomb.pos, explosion, game_state)
             else:
                 new_bombs.append(bomb) # effectively remove exploding bomb
         self.all_bombs = new_bombs # all bombs is now the bombs that did not explode
@@ -141,7 +148,7 @@ class Agent:
         new_ore_blocks = []
         for pos in game_state.ore_blocks:
             for ore in self.all_ores:
-                if ore.get_pos() == pos:
+                if ore.pos == pos:
                     new_ore_blocks.append(ore)
                     break
         self.all_ores = new_ore_blocks
@@ -150,9 +157,9 @@ class Agent:
     # Damages an ore block at a certain position
     def damage_ore_block(self, position):
         for ore in self.all_ores:
-            if ore.get_pos() == position:
+            if ore.pos == position:
                 ore.damage()
-                if ore.get_state() == 0:
+                if ore.state == 0:
                     self.all_ores.remove(ore)
                 return
     
@@ -160,7 +167,7 @@ class Agent:
     # Shortens the fuse of a bomb at a certain position
     def detonate_bomb(self, position, game_state):
         for bomb in self.all_bombs:
-            if bomb.get_pos() == position:
+            if bomb.pos == position:
                 bomb.detonate(game_state)
                 return
     
@@ -169,15 +176,15 @@ class Agent:
     def get_damaged_ores(self):
         damaged_ores = []
         for ore in self.all_ores:
-            if ore.get_state() == 1:
-                damaged_ores.append(ore.get_pos())
+            if ore.state == 1:
+                damaged_ores.append(ore.pos)
         return damaged_ores
     
     
     # Adds new bombs
     def add_new_bombs(self, game_state):
         # Gets a list of all the bomb positions
-        bomb_pos = [bomb.get_pos() for bomb in self.all_bombs]
+        bomb_pos = [bomb.pos for bomb in self.all_bombs]
         new_bomb_pos = [pos for pos in game_state.bombs if pos not in bomb_pos]
         
         # Adds new bombs to the list
@@ -265,15 +272,9 @@ class Agent:
 class Bomb:
 
     # Initialises the bomb with its placement tick and position
-    def __init__(self, starttick, position):
+    def __init__(self, starttick, pos):
         self.starttick = starttick
-        self.x, self.y = position
-    
-    
-    # Returns the position of the bomb
-    def get_pos(self):
-        return (self.x, self.y)
-    
+        self.pos = pos
     
     # Tells the bomb to detonate in two ticks
     def detonate(self, tick):
@@ -290,9 +291,9 @@ class Bomb:
     # Returns a list of tuples of the bomb's explosion radius
     def get_explosion(self, game_state):
         max_col, max_row = game_state.size
-        explosion = [(self.x, self.y), (self.x+1, self.y), (self.x-1, self.y)]
-        explosion += [(self.x+2, self.y), (self.x-2, self.y), (self.x, self.y+1)] 
-        explosion += [(self.x, self.y-1), (self.x, self.y+2), (self.x, self.y-2)]
+        x, y = self.pos
+        explosion = [(x,y), (x+1,y), (x-1,y), (x+2,y), (x-2,y),
+                     (x,y+1), (x,y-1), (x,y+2), (x,y-2)]
         explosion = [e for e in explosion if (e[0]<max_col and e[0]>=0 
                                           and e[1]<max_row and e[1]>=0)]
         return explosion
@@ -305,19 +306,9 @@ class Bomb:
 class Ore:
 
     # Initialises an ore block with its position
-    def __init__(self, position):
+    def __init__(self, pos):
         self.state = 3 # takes 3 hits to be destroyed
-        self.position = position
-    
-    
-    # Returns the position of the ore block
-    def get_pos(self):
-        return self.position
-
-    
-    # Returns the state of the ore block
-    def get_state(self):
-        return self.state
+        self.pos = pos
     
     
     # Damages the ore block once
