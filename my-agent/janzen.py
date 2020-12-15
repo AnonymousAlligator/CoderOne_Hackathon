@@ -96,16 +96,20 @@ class Agent:
         # Updates the target blocks
         # Priority: 1) damaged ore blocks, 2) wood blocks, 3) ore blocks
         bombables = self.get_damaged_ores()
+        bombables = self.get_all_neighbours(bombables, game_state)
         if bombables == []:
             bombables = game_state.soft_blocks
+            bombables = self.get_all_neighbours(bombables, game_state)
         if bombables == []:
             bombables = game_state.ore_blocks
+            bombables = self.get_all_neighbours(bombables, game_state)
         if bombables == []:
             bombables = game_state.opponents(0)
             bombables.remove(player_state.location)
+            bombables = self.get_all_neighbours(bombables, game_state)
             
         # Gets the neighbours of the target blocks
-        self.bombables = self.get_all_neighbours(bombables, game_state)
+        self.bombables = bombables
         
         # Removes old bombs and adds new ones
         self.occupied += self.check_bombs(game_state)
