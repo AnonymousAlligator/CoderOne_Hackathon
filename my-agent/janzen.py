@@ -62,11 +62,10 @@ class Agent:
         action = random.choice(actions)
         
         # Choose best option
-        for k in range(0,5):
+        for k in range(0,4):
             if self.get_next_position(action, player_state.location) in self.occupied:
                 index = actions.index(action)
                 action = actions[(index+1)%len(actions)]
-            break
         return action
 
         
@@ -88,6 +87,7 @@ class Agent:
         # Updates the location of all the blocks
         self.occupied = game_state.all_blocks + game_state.opponents(0)
         self.items = game_state.ammo + game_state.treasure
+        self.update_ore_blocks(game_state)
         
         # Updates the target blocks
         # Priority: 1) damaged ore blocks, 2) wood blocks, 3) ore blocks
@@ -119,13 +119,24 @@ class Agent:
         return explosions # returns a list of dangerous squares
 
     
-    # Updates the states of ore blocks
+    # Checks the states of ore blocks
     def check_ore_blocks(self, bomb, game_state):
         explosion = bomb.get_explosion(game_state)
         for e in explosion:
             if e in game_state.ore_blocks:
                 self.damage_ore_block(e)
                 
+    
+    # Updates the ore blocks in the game
+    def update_ore_blocks(self, game_state):
+        new_ore_blocks = []
+        for pos in game_state.ore_blocks:
+            for ore in self.all_ores:
+                if ore.get_pos() == pos:
+                    new_ore_blocks.append(ore)
+                    break
+        self.all_ores = new_ore_blocks
+    
                 
     # Damages an ore block at a certain position
     def damage_ore_block(self, position):
@@ -249,7 +260,7 @@ class Bomb:
     
     # Returns a boolean depending on whether the bomb is about to explode
     def is_exploding(self, tick):
-        if tick - self.starttick >= BOMB_TIME: # Explodes after 3.5 seconds
+        if tick - self.starttick == BOMB_TIME: # Explodes after 3.5 seconds
             return True
         return False
         
