@@ -111,8 +111,10 @@ class Agent:
         explosions = []
         for bomb in self.all_bombs:
             if bomb.is_exploding(game_state.tick_number+1):
-                explosions += bomb.get_explosion(game_state)
-                self.check_ore_blocks(bomb, game_state)
+                explosion = bomb.get_explosion(game_state)
+                explosions += explosion
+                self.check_ore_blocks(explosion, game_state)
+                self.check_other_bombs(bomb.get_pos(), explosion, game_state)
             else:
                 new_bombs.append(bomb) # effectively remove exploding bomb
         self.all_bombs = new_bombs # all bombs is now the bombs that did not explode
@@ -120,12 +122,19 @@ class Agent:
 
     
     # Checks the states of ore blocks
-    def check_ore_blocks(self, bomb, game_state):
-        explosion = bomb.get_explosion(game_state)
+    def check_ore_blocks(self, explosion, game_state):
         for e in explosion:
             if e in game_state.ore_blocks:
                 self.damage_ore_block(e)
-                
+    
+    
+    # Checks the state of other bombs
+    def check_other_bombs(self, bomb_pos, explosion, game_state):
+        explosion.remove(bomb_pos)
+        for e in explosion: 
+            if e in game_state.ore_blocks:
+                self.detonate_bomb(e, game_state)
+    
     
     # Updates the ore blocks in the game
     def update_ore_blocks(self, game_state):
@@ -145,6 +154,14 @@ class Agent:
                 ore.damage()
                 if ore.get_state() == 0:
                     self.all_ores.remove(ore)
+                return
+    
+    
+    # Shortens the fuse of a bomb at a certain position
+    def detonate_bomb(self, position, game_state):
+        for bomb in self.all_bombs:
+            if bomb.get_pos() == position:
+                bomb.detonate(game_state)
                 return
     
     
@@ -256,6 +273,11 @@ class Bomb:
     # Returns the position of the bomb
     def get_pos(self):
         return (self.x, self.y)
+    
+    
+    # Tells the bomb to detonate in two ticks
+    def detonate(self, tick):
+        self.starttick = tick - BOMB_TIME + 2
     
     
     # Returns a boolean depending on whether the bomb is about to explode
