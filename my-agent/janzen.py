@@ -17,6 +17,7 @@ class Agent:
         self.bombables = []
         self.grace_period = BOMB_TIME+1 
         self.last_bomb = -self.grace_period
+        self.id = -1
         
 
     # Chooses the next action
@@ -25,6 +26,7 @@ class Agent:
         self.update(game_state, player_state)
         if game_state.tick_number == 0:
             self.initialise_all_ores(game_state)
+            self.id = player_state.id
         
         # If have bombs, tries to bomb damaged ores, wood, then undamaged ores
         action = self.next_move_bomb(game_state, player_state)
@@ -86,7 +88,7 @@ class Agent:
     # Updates the parameters of the agent class
     def update(self, game_state, player_state):
         # Updates the location of all the blocks
-        self.occupied = game_state.all_blocks + game_state.bombs + game_state.opponents(0)
+        self.occupied = game_state.all_blocks + game_state.bombs + game_state.opponents(self.id)
         self.items = game_state.ammo + game_state.treasure
         self.update_ore_blocks(game_state)
         
@@ -101,7 +103,7 @@ class Agent:
         if bombables == []:
             bombables = game_state.ore_blocks
         if bombables == []:
-            bombables = game_state.opponents(0)
+            bombables = game_state.opponents(self.id)
             bombables.remove(player_state.location)
             
         # Gets the neighbours of the target blocks
