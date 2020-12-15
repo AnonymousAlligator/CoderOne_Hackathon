@@ -11,31 +11,38 @@ class Agent:
     # Initialise at start time
     def __init__(self):
         self.all_bombs = []
+        self.all_ores = []
         self.occupied = []
         self.items = []
         self.bombables = []
-        self.last_bomb = -BOMB_TIME-1
+        self.last_bomb = -(BOMB_TIME+1)
         
 
     # Chooses the next action
     def next_move(self, game_state, player_state):
         # Updates the game
         self.update(game_state)
+        if game_state.tick_number == 0:
+            self.initialise_all_ores(game_state)
         
-        # Algorithm:
-        # 1) If have bombs and crates and next to crate, place bomb and run
-        # 2) If have bombs and crates and not next to crate, go towards crate
-        # 3) If have bombs and no crates and next to ore, place bomb and run
-        # 4) If have bombs and no crates and not next to ore, go towards ore
-        # 5) If no bombs, get ammo / treasures
-        # 6) Move randomly
+        # If have bombs, tries to bomb damaged ores, wood, then undamaged ores
         action = self.next_move_bomb(game_state, player_state)
+        # If no bombs, get ammo / treasures
         if action == '':
             action = self.next_move_BFS(game_state, player_state, self.items)
+        # Otherwise, move randomly while avoiding danger
         if action == '':
             action = self.next_move_random(player_state)
+        
         return action
     
+    
+    # Initialise the ore list
+    def initialise_all_ores(self, game_state):
+        for pos in game_state.ore_blocks:
+            ore = Ore(pos)
+            self.all_ores.append(ore)
+        
     
     # Tries to bomb wooden crates
     def next_move_bomb(self, game_state, player_state):
@@ -82,10 +89,15 @@ class Agent:
         self.occupied = game_state.all_blocks + game_state.opponents(0)
         self.items = game_state.ammo + game_state.treasure
         
-        # Updates the list of neighbours of bombable blocks
-        bombables = game_state.soft_blocks
+        # Updates the target blocks
+        # Priority: 1) damaged ore blocks, 2) wood blocks, 3) ore blocks
+        bombables = self.get_damaged_ores()
+        if bombables == []:
+            bombables = game_state.soft_blocks
         if bombables == []:
             bombables = game_state.ore_blocks
+        
+        # Gets the neighbours of the target blocks
         self.bombables = self.get_all_neighbours(bombables, game_state)
         
         # Removes old bombs and adds new ones
@@ -100,12 +112,40 @@ class Agent:
         for bomb in self.all_bombs:
             if bomb.is_exploding(game_state.tick_number+1):
                 explosions += bomb.get_explosion(game_state)
+                self.check_ore_blocks(bomb, game_state)
             else:
                 new_bombs.append(bomb) # effectively remove exploding bomb
         self.all_bombs = new_bombs # all bombs is now the bombs that did not explode
         return explosions # returns a list of dangerous squares
 
-        
+    
+    # Updates the states of ore blocks
+    def check_ore_blocks(self, bomb, game_state):
+        explosion = bomb.get_explosion(game_state)
+        for e in explosion:
+            if e in game_state.ore_blocks:
+                self.damage_ore_block(e)
+                
+                
+    # Damages an ore block at a certain position
+    def damage_ore_block(self, position):
+        for ore in self.all_ores:
+            if ore.get_pos() == position:
+                ore.damage()
+                if ore.get_state() == 0:
+                    self.all_ores.remove(ore)
+                return
+    
+    
+    # Returns a list of the positions of ore blocks that are about to break
+    def get_damaged_ores(self):
+        damaged_ores = []
+        for ore in self.all_ores:
+            if ore.get_state() == 1:
+                damaged_ores.append(ore.get_pos())
+        return damaged_ores
+    
+    
     # Adds new bombs
     def add_new_bombs(self, game_state):
         # Gets a list of all the bomb positions
@@ -181,15 +221,15 @@ class Agent:
         
         
     # Gets the neighbouring squares
-    def get_neighbours(self, curr_pos, game_state): 
+    def get_neighbours(self, pos, game_state): 
         max_col, max_row = game_state.size
-        x, y = curr_pos
+        x, y = pos
         neighbours = [(x+1,y), (x-1,y), (x,y+1), (x,y-1)]
         neighbours = [n for n in neighbours if (n[0]<max_col and n[0]>=0
                                             and n[1]<max_row and n[1]>=0)]
         return neighbours
-        
-    
+
+
 """
  A class for a bomb
  
@@ -223,3 +263,30 @@ class Bomb:
         explosion = [e for e in explosion if (e[0]<max_col and e[0]>=0 
                                           and e[1]<max_row and e[1]>=0)]
         return explosion
+
+
+"""
+ A class for ore blocks
+ 
+"""
+class Ore:
+
+    # Initialises an ore block with its position
+    def __init__(self, position):
+        self.state = 3 # takes 3 hits to be destroyed
+        self.position = position
+    
+    
+    # Returns the position of the ore block
+    def get_pos(self):
+        return self.position
+
+    
+    # Returns the state of the ore block
+    def get_state(self):
+        return self.state
+    
+    
+    # Damages the ore block once
+    def damage(self):
+        self.state -= 1
