@@ -18,6 +18,7 @@ class Agent:
         self.last_bomb = -(BOMB_TIME+1)
         self.is_stalking = False
         self.opponent_prev_pos = (-1, -1)
+        self.id = -1
 
     # Chooses the next action
     def next_move(self, game_state, player_state):
@@ -97,9 +98,9 @@ class Agent:
         
         # Updates the target blocks
         # Priority: 1) damaged ore blocks, 2) wood blocks, 3) ore blocks
-        bombables = self.get_damaged_ores() + game_state.opponents(self.id)
+        bombables = self.get_damaged_ores()
         if bombables == []:
-            bombables = game_state.soft_blocks + game_state.opponents(self.id)
+            bombables = game_state.soft_blocks
         if bombables == []:
             bombables = game_state.ore_blocks + game_state.opponents(self.id)
         
