@@ -16,7 +16,8 @@ class Agent:
         self.items = []
         self.bombables = []
         self.last_bomb = -(BOMB_TIME+1)
-        
+        self.is_stalking = False
+        self.opponent_prev_pos = (-1, -1)
 
     # Chooses the next action
     def next_move(self, game_state, player_state):
@@ -25,12 +26,17 @@ class Agent:
         if game_state.tick_number == 0:
             self.initialise_all_ores(game_state)
             self.id = player_state.id
-
+        opponent_curr_pos = game_state.opponents(self.id)
+        if self.is_stalking:
+            if self.opponent_prev_pos == opponent_curr_pos:
+                self.attack()
+        
+        self.opponent_prev_pos = opponent_curr_pos
         # If have bombs, tries to bomb damaged ores, wood, then undamaged ores
         action = self.next_move_bomb(game_state, player_state)
         # If no bombs, get ammo / treasures
         if action == '':
-            action = self.next_move_BFS(game_state, player_state, self.items)
+            action = self.next_move_BFS(game_state, player_state, self.items, False)
         # Otherwise, hunt the opponent
         if action == '':
             action = self.stalk(game_state, player_state)
@@ -47,21 +53,27 @@ class Agent:
     
     # Tries to bomb wooden crates
     def next_move_bomb(self, game_state, player_state):
+        self.staking = False
         if player_state.ammo != 0 and game_state.tick_number - self.last_bomb > BOMB_TIME+1:
             if player_state.location in self.bombables:
                 self.last_bomb = game_state.tick_number
                 return 'p'
             else:
-                return self.next_move_BFS(game_state, player_state, self.bombables)
+                return self.next_move_BFS(game_state, player_state, self.bombables, False)
         return ''
     
     
     # stalk the opponent
     def stalk(self, game_state, player_state):
+        self.is_stalking = True
         opponent_pos = game_state.opponents(self.id)
-        action = self.next_move_BFS(game_state, player_state, opponent_pos)
+        action = self.next_move_BFS(game_state, player_state, opponent_pos, True)
         return action
 
+    # attack the opponent
+    def attack(self):
+        self.is_stalking = False
+        return 'p'
         
     # Gets the position of the agent given an action
     def get_next_position(self, action, pos):
@@ -164,7 +176,8 @@ class Agent:
 
             
     # Determines the optimal next movement using BFS
-    def next_move_BFS(self, game_state, player_state, target_squares):
+    def next_move_BFS(self, game_state, player_state, target_squares, is_stalking):
+        self.is_stalking = is_stalking
         visited = [] # visited squares
         previous = [] # squares previous to the visited squares
         queue = [] # queue of squares to be visited
