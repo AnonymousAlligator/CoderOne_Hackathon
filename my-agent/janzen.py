@@ -85,7 +85,7 @@ class Agent:
     # Updates the parameters of the agent class
     def update(self, game_state):
         # Updates the location of all the blocks
-        self.occupied = game_state.all_blocks + game_state.opponents(0)
+        self.occupied = game_state.all_blocks + game_state.bombs + game_state.opponents(0)
         self.items = game_state.ammo + game_state.treasure
         self.update_ore_blocks(game_state)
         
