@@ -91,17 +91,17 @@ class Agent:
     # Updates the parameters of the agent class
     def update(self, game_state):
         # Updates the location of all the blocks
-        self.occupied = game_state.all_blocks + game_state.opponents(0)
+        self.occupied = game_state.all_blocks + game_state.opponents(self.id)
         self.items = game_state.ammo + game_state.treasure
         self.update_ore_blocks(game_state)
         
         # Updates the target blocks
         # Priority: 1) damaged ore blocks, 2) wood blocks, 3) ore blocks
-        bombables = self.get_damaged_ores()
+        bombables = self.get_damaged_ores() + game_state.opponents(self.id)
         if bombables == []:
-            bombables = game_state.soft_blocks
+            bombables = game_state.soft_blocks + game_state.opponents(self.id)
         if bombables == []:
-            bombables = game_state.ore_blocks
+            bombables = game_state.ore_blocks + game_state.opponents(self.id)
         
         # Gets the neighbours of the target blocks
         self.bombables = self.get_all_neighbours(bombables, game_state)
