@@ -33,7 +33,7 @@ class Agent:
             action = self.next_move_BFS(game_state, player_state, self.items)
         # Otherwise, hunt the opponent
         if action == '':
-            action = self.stalk(player_state)
+            action = self.stalk(game_state, player_state)
         
         return action
     
