@@ -29,7 +29,7 @@ class Agent:
         opponent_curr_pos = game_state.opponents(self.id)
         if self.is_stalking:
             if self.opponent_prev_pos == opponent_curr_pos:
-                self.attack()
+                self.next_move_bomb(game_state, player_state)
         
         self.opponent_prev_pos = opponent_curr_pos
         # If have bombs, tries to bomb damaged ores, wood, then undamaged ores
@@ -70,10 +70,10 @@ class Agent:
         action = self.next_move_BFS(game_state, player_state, opponent_pos, True)
         return action
 
-    # attack the opponent
-    def attack(self):
-        self.is_stalking = False
-        return 'p'
+    # # attack the opponent
+    # def attack(self):
+    #     self.is_stalking = False
+    #     return 'p'
         
     # Gets the position of the agent given an action
     def get_next_position(self, action, pos):
