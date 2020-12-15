@@ -34,7 +34,7 @@ class agent:
             opponent_id = 1
         else:
             opponent_id = 0
-        opponent_location = game_state.opponents(self.id)
+        opponent_location = game_state.opponents(self.id)[0]
         blocks = game_state.all_blocks
         ammo = player_state.ammo
 
@@ -68,7 +68,7 @@ class agent:
         # if action == '' and opponent_location in my_surrounding:
         #     action = attack(self.location, opponent_location, bombs)
         # 2.1)
-        if action == '' and ammo == 7:
+        if action == '':
             action = stalk(self.location, opponent_location)
 
         # Handle blocks being where we want to go
