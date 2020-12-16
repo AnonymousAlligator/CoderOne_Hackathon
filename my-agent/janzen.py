@@ -186,7 +186,7 @@ class Agent:
         for ore in self.all_ores:
             if ore.pos == position:
                 ore.damage()
-                if ore.state == 0:
+                if ore.state <= 0:
                     self.all_ores.remove(ore)
                 return
     
@@ -203,7 +203,7 @@ class Agent:
     def get_damaged_ores(self):
         damaged_ores = []
         for ore in self.all_ores:
-            if ore.state == 1:
+            if ore.state <= 1:
                 damaged_ores.append(ore.pos)
         return damaged_ores
     
@@ -302,6 +302,7 @@ class Bomb:
     def __init__(self, starttick, pos):
         self.starttick = starttick
         self.pos = pos
+    
     
     # Tells the bomb to detonate in two ticks
     def detonate(self, tick):
