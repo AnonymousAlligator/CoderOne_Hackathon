@@ -4,9 +4,8 @@ BOMB_TIME = 35
 RAMPAGE_GRACE_PERIOD = 10
 
 """
- A class for the agent
-  found. /lib/x86_64-linux-gnu/libm.so.6: version `GLIBC_2.29' not found (required by /home/kevin/coderOne/CoderOne_Hackathon/venv/lib/python3.8/site-packages/arcade/soloud/libsoloud.so)
-Warning, can't initialize soloud name 'soloud_dll' is not defined. Sound support will be limited.
+  This is Monty Python 3.9.1. He was not developed in Python 3.9.1.
+  He deprives you of bombs and steals your almost broken ores.
 """
 class Agent:
 
