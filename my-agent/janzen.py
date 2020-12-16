@@ -122,19 +122,21 @@ class Agent:
         bombables = []
         for target in targets:
             neighbours = self.get_neighbours(target, game_state)
-            breakables = self.check_accessable(game_state, neighbours)
-            if len(breakables) != 0:
-                bombables += [target] + breakables
+            is_accessables = self.check_accessable(game_state, neighbours)
+            if is_accessables:
+                bombables += [target]
         return bombables
     
         
     # Checks that a block is accessible, ie not surrounded by iron
     def check_accessable(self, game_state, neighbours):
-        breakables = []
+        blocked = 0
         for neighbour in neighbours:
-            if neighbour not in game_state.all_blocks:
-                breakables.append(neighbour)
-        return breakables
+            if neighbour in game_state.all_blocks:
+                blocked +=1
+        if blocked == len(neighbours):
+            return False
+        return True
 
 
     # Checks whether any bombs are exploding and updates accordingly
