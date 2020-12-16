@@ -1,6 +1,7 @@
 import random
 
 BOMB_TIME = 35
+RAMPAGE_GRACE_PERIOD = 10
 
 """
  A class for the agent
@@ -94,19 +95,22 @@ class Agent:
         self.update_ore_blocks(game_state)
         
         if game_state.soft_blocks == [] and game_state.ore_blocks == []:
-            self.grace_period = 10 # throws a bomb every second
+            self.grace_period = RAMPAGE_GRACE_PERIOD # throws a bomb every second
         
-        # Updates the target blocks
-        # Priority: 1) damaged ore blocks, 2) wood blocks, 3) ore blocks
+        # Updates the target blocks with a certain priority
         bombables = []
+        # 1) Search for damaged ore blocks (about to break)
         targets = self.get_damaged_ores()
         bombables = self.get_bombables(targets, game_state)
+        # 2) Search for wooden blocks
         if bombables == []:
             targets = game_state.soft_blocks
             bombables = self.get_bombables(targets, game_state)
+        # 3) Search for ore blocks
         if bombables == []:
             targets = game_state.ore_blocks
             bombables = self.get_bombables(targets, game_state)
+        # 4) Once all blocks are gone/unreachable, attack the player
         if bombables == []:
             targets = game_state.opponents(self.id)
             bombables = self.get_all_neighbours(targets, game_state)
@@ -118,6 +122,7 @@ class Agent:
         self.occupied += self.check_bombs(game_state)
         self.add_new_bombs(game_state)
 
+        
     # Gets the targetted blocks
     def get_bombables(self, targets, game_state):
         neighbours = self.get_all_neighbours(targets, game_state)
