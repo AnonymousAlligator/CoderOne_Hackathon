@@ -132,7 +132,7 @@ class Agent:
     def check_accessable(self, game_state, neighbours):
         breakables = []
         for neighbour in neighbours:
-            if neighbour not in game_state.indestructible_blocks:
+            if neighbour not in game_state.all_blocks:
                 breakables.append(neighbour)
         return breakables
 
