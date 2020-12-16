@@ -17,9 +17,8 @@ class Agent:
         self.bombables = []
         self.grace_period = BOMB_TIME+1 
         self.last_bomb = -self.grace_period
-        self.opponent_prev_pos = (-1, -1)
         self.id = -1
-        self.is_stalking = False
+        
 
     # Chooses the next action
     def next_move(self, game_state, player_state):
@@ -28,24 +27,26 @@ class Agent:
         if game_state.tick_number == 0:
             self.initialise_all_ores(game_state)
             self.id = player_state.id
-
+        
         # If have bombs, tries to bomb damaged ores, wood, then undamaged ores
         action = self.next_move_bomb(game_state, player_state)
         # If no bombs, get ammo / treasures
         if action == '':
-            action = self.next_move_BFS(game_state, player_state, self.items, False)
+            action = self.next_move_BFS(game_state, player_state, self.items)
         # Otherwise, move randomly while avoiding danger
-        if action == '' and player_state.ammo > 0:
-            action = self.stalk(game_state, player_state)
+        if action == '':
+            action = self.next_move_random(player_state)
         
         return action
-
+    
+    
     # Initialise the ore list
     def initialise_all_ores(self, game_state):
         for pos in game_state.ore_blocks:
             ore = Ore(pos)
             self.all_ores.append(ore)
-
+        
+    
     # Tries to bomb stuff
     def next_move_bomb(self, game_state, player_state):
         if player_state.ammo != 0 and game_state.tick_number - self.last_bomb > self.grace_period:
@@ -53,15 +54,24 @@ class Agent:
                 self.last_bomb = game_state.tick_number
                 return 'p'
             else:
-                return self.next_move_BFS(game_state, player_state, self.bombables, False)
+                return self.next_move_BFS(game_state, player_state, self.bombables)
         return ''
-
-    # stalk the opponent
-    def stalk(self, game_state, player_state):
-        opponent_pos = game_state.opponents(self.id)
-        action = self.next_move_BFS(game_state, player_state, opponent_pos, True)
+    
+    
+    # Chooses a random position but tries to avoid blocks/danger
+    def next_move_random(self, player_state):
+        # Chooses the action, randomly
+        actions = ['u','d','l','r']
+        action = random.choice(actions)
+        
+        # Choose best option
+        for k in range(0,4):
+            if self.get_next_position(action, player_state.location) in self.occupied:
+                index = actions.index(action)
+                action = actions[(index+1)%len(actions)]
         return action
 
+        
     # Gets the position of the agent given an action
     def get_next_position(self, action, pos):
         if action == 'u':
@@ -87,22 +97,47 @@ class Agent:
         
         # Updates the target blocks
         # Priority: 1) damaged ore blocks, 2) wood blocks, 3) ore blocks
-        bombables = self.get_damaged_ores()
+        bombables = []
+        targets = self.get_damaged_ores()
+        for target in targets:
+            neighbours = self.get_neighbours(target, game_state)
+            breakables = self.check_accessable(game_state, neighbours)
+            if len(breakables) != 0:
+                bombables = bombables + [target] + breakables
         if bombables == []:
-            bombables = game_state.soft_blocks
+            targets = game_state.soft_blocks
+            for target in targets:
+                neighbours = self.get_neighbours(target, game_state)
+                breakables = self.check_accessable(game_state, neighbours)
+                if len(breakables) != 0:
+                    bombables = bombables + [target] + breakables
         if bombables == []:
-            bombables = game_state.ore_blocks
-        if self.is_stalking:
+            targets = game_state.ore_blocks
+            for target in targets:
+                neighbours = self.get_neighbours(target, game_state)
+                breakables = self.check_accessable(game_state, neighbours)
+                if len(breakables) != 0:
+                    bombables = bombables + [target] + breakables
+        if bombables == []:
             bombables = game_state.opponents(self.id)
+            bombables = self.get_all_neighbours(bombables, game_state)
             
         # Gets the neighbours of the target blocks
-        self.bombables = self.get_all_neighbours(bombables, game_state)
+        self.bombables = bombables
         
         # Removes old bombs and adds new ones
         self.occupied += self.check_bombs(game_state)
         self.add_new_bombs(game_state)
 
-        
+    # Checks that a block is accessible, ie not surrounded by iron
+    def check_accessable(self, game_state, neighbours):
+        breakables = []
+        for neighbour in neighbours:
+            if neighbour not in game_state.indestructible_blocks:
+                breakables.append(neighbour)
+        return breakables
+
+
     # Checks whether any bombs are exploding and updates accordingly
     def check_bombs(self, game_state):
         new_bombs = []
@@ -118,11 +153,13 @@ class Agent:
         self.all_bombs = new_bombs # all bombs is now the bombs that did not explode
         return explosions # returns a list of dangerous squares
 
+    
     # Checks the states of ore blocks
     def check_ore_blocks(self, explosion, game_state):
         for e in explosion:
             if e in game_state.ore_blocks:
                 self.damage_ore_block(e)
+    
     
     # Checks the state of other bombs
     def check_other_bombs(self, bomb_pos, explosion, game_state):
@@ -130,6 +167,7 @@ class Agent:
         for e in explosion: 
             if e in game_state.ore_blocks:
                 self.detonate_bomb(e, game_state)
+    
     
     # Updates the ore blocks in the game
     def update_ore_blocks(self, game_state):
@@ -140,7 +178,8 @@ class Agent:
                     new_ore_blocks.append(ore)
                     break
         self.all_ores = new_ore_blocks
-
+    
+                
     # Damages an ore block at a certain position
     def damage_ore_block(self, position):
         for ore in self.all_ores:
@@ -149,14 +188,16 @@ class Agent:
                 if ore.state == 0:
                     self.all_ores.remove(ore)
                 return
-
+    
+    
     # Shortens the fuse of a bomb at a certain position
     def detonate_bomb(self, position, game_state):
         for bomb in self.all_bombs:
             if bomb.pos == position:
                 bomb.detonate(game_state)
                 return
-
+    
+    
     # Returns a list of the positions of ore blocks that are about to break
     def get_damaged_ores(self):
         damaged_ores = []
@@ -164,7 +205,8 @@ class Agent:
             if ore.state == 1:
                 damaged_ores.append(ore.pos)
         return damaged_ores
-
+    
+    
     # Adds new bombs
     def add_new_bombs(self, game_state):
         # Gets a list of all the bomb positions
@@ -176,9 +218,9 @@ class Agent:
             bomb = Bomb(game_state.tick_number, pos)
             self.all_bombs.append(bomb)
 
+            
     # Determines the optimal next movement using BFS
-    def next_move_BFS(self, game_state, player_state, target_squares, is_stalking):
-        self.is_stalking = is_stalking
+    def next_move_BFS(self, game_state, player_state, target_squares):
         visited = [] # visited squares
         previous = [] # squares previous to the visited squares
         queue = [] # queue of squares to be visited
@@ -188,7 +230,8 @@ class Agent:
         queue.append(player_pos)
         visited.append(player_pos)
         previous.append((-1,-1)) # random number
-
+    
+    
         # Run until the queue is empty
         while(len(queue)!=0):
             curr = queue.pop(0)
@@ -211,7 +254,8 @@ class Agent:
                     previous.append(curr)
         
         return ''
-
+    
+    
     # Gets the direction given a current and next positions
     def get_direction(self, curr_pos, next_pos):
         diff = (curr_pos[0]-next_pos[0], curr_pos[1]-next_pos[1])
@@ -226,7 +270,8 @@ class Agent:
             return 'r'
         else:
             return ''
-
+    
+    
     # Gets the neighbouring squares of a list of squares
     def get_all_neighbours(self, positions, game_state):
         neighbours = []
@@ -234,7 +279,8 @@ class Agent:
             neighbours += self.get_neighbours(position, game_state)
         list(dict.fromkeys(neighbours)) # remove duplicates
         return neighbours
-
+        
+        
     # Gets the neighbouring squares
     def get_neighbours(self, pos, game_state): 
         max_col, max_row = game_state.size
