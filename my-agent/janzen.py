@@ -98,30 +98,17 @@ class Agent:
         
         # Updates the target blocks
         # Priority: 1) damaged ore blocks, 2) wood blocks, 3) ore blocks
-        bombables = []
         targets = self.get_damaged_ores()
-        for target in targets:
-            neighbours = self.get_neighbours(target, game_state)
-            breakables = self.check_accessable(game_state, neighbours)
-            if len(breakables) != 0:
-                bombables = bombables + [target] + breakables
+        bombables = self.get_bombables(targets, game_state)
         if bombables == []:
             targets = game_state.soft_blocks
-            for target in targets:
-                neighbours = self.get_neighbours(target, game_state)
-                breakables = self.check_accessable(game_state, neighbours)
-                if len(breakables) != 0:
-                    bombables = bombables + [target] + breakables
+            bombables = self.get_bombables(targets, game_state)
         if bombables == []:
             targets = game_state.ore_blocks
-            for target in targets:
-                neighbours = self.get_neighbours(target, game_state)
-                breakables = self.check_accessable(game_state, neighbours)
-                if len(breakables) != 0:
-                    bombables = bombables + [target] + breakables
+            bombables = self.get_bombables(targets, game_state)
         if bombables == []:
-            bombables = game_state.opponents(self.id)
-            bombables = self.get_all_neighbours(bombables, game_state)
+            targets = game_state.opponents(self.id)
+            bombables = self.get_bombables(targets, game_state)
             
         # Gets the neighbours of the target blocks
         self.bombables = bombables
@@ -130,6 +117,17 @@ class Agent:
         self.occupied += self.check_bombs(game_state)
         self.add_new_bombs(game_state)
 
+    # Gets the targetted blocks
+    def get_bombables(self, targets, game_state):
+        bombables = []
+        for target in targets:
+            neighbours = self.get_neighbours(target, game_state)
+            breakables = self.check_accessable(game_state, neighbours)
+            if len(breakables) != 0:
+                bombables += [target] + breakables
+        return bombables
+    
+        
     # Checks that a block is accessible, ie not surrounded by iron
     def check_accessable(self, game_state, neighbours):
         breakables = []
