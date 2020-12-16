@@ -4,7 +4,8 @@ BOMB_TIME = 35
 
 """
  A class for the agent
- 
+  found. /lib/x86_64-linux-gnu/libm.so.6: version `GLIBC_2.29' not found (required by /home/kevin/coderOne/CoderOne_Hackathon/venv/lib/python3.8/site-packages/arcade/soloud/libsoloud.so)
+Warning, can't initialize soloud name 'soloud_dll' is not defined. Sound support will be limited.
 """
 class Agent:
 
@@ -97,21 +98,30 @@ class Agent:
         
         # Updates the target blocks
         # Priority: 1) damaged ore blocks, 2) wood blocks, 3) ore blocks
-        bombables = self.get_damaged_ores()
-        bombables = self.get_all_neighbours(bombables, game_state)
-        bombables = [b for b in bombables if b not in self.occupied]
+        bombables = []
+        targets = self.get_damaged_ores()
+        for target in targets:
+            neighbours = self.get_neighbours(target, game_state)
+            breakables = self.check_accessable(game_state, neighbours)
+            if len(breakables) != 0:
+                bombables = bombables + [target] + breakables
         if bombables == []:
-            bombables = game_state.soft_blocks
-            bombables = self.get_all_neighbours(bombables, game_state)
-            bombables = [b for b in bombables if b not in self.occupied]
+            targets = game_state.soft_blocks
+            for target in targets:
+                neighbours = self.get_neighbours(target, game_state)
+                breakables = self.check_accessable(game_state, neighbours)
+                if len(breakables) != 0:
+                    bombables = bombables + [target] + breakables
         if bombables == []:
-            bombables = game_state.ore_blocks
-            bombables = self.get_all_neighbours(bombables, game_state)
-            bombables = [b for b in bombables if b not in self.occupied]
+            targets = game_state.ore_blocks
+            for target in targets:
+                neighbours = self.get_neighbours(target, game_state)
+                breakables = self.check_accessable(game_state, neighbours)
+                if len(breakables) != 0:
+                    bombables = bombables + [target] + breakables
         if bombables == []:
             bombables = game_state.opponents(self.id)
             bombables = self.get_all_neighbours(bombables, game_state)
-            bombables = [b for b in bombables if b not in self.occupied]
             
         # Gets the neighbours of the target blocks
         self.bombables = bombables
@@ -120,7 +130,15 @@ class Agent:
         self.occupied += self.check_bombs(game_state)
         self.add_new_bombs(game_state)
 
-        
+    # Checks that a block is accessible, ie not surrounded by iron
+    def check_accessable(self, game_state, neighbours):
+        breakables = []
+        for neighbour in neighbours:
+            if neighbour not in game_state.indestructible_blocks:
+                breakables.append(neighbour)
+        return breakables
+
+
     # Checks whether any bombs are exploding and updates accordingly
     def check_bombs(self, game_state):
         new_bombs = []
