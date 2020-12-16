@@ -100,14 +100,22 @@ class Agent:
         bombables = self.get_damaged_ores()
         bombables = self.get_all_neighbours(bombables, game_state)
         if bombables == []:
-            bombables = game_state.soft_blocks
+            targets = game_state.soft_blocks
+            for target in targets:
+                neighbours = self.get_all_neighbours(target, game_state)
+                breakables = self.check_accessable(game_state, neighbours)
+                if len(breakables) != 0:
+                    bombables = bombables + target + breakables
             bombables = self.get_all_neighbours(bombables, game_state)
         if bombables == []:
-            bombables = game_state.ore_blocks
-            bombables = self.get_all_neighbours(bombables, game_state)
+            targets = game_state.ore_blocks
+            for target in targets:
+                neighbours = self.get_all_neighbours(target, game_state)
+                breakables = self.check_accessable(game_state, neighbours)
+                if len(breakables) != 0:
+                    bombables = bombables + target + breakables
         if bombables == []:
             bombables = game_state.opponents(self.id)
-            bombables.remove(player_state.location)
             bombables = self.get_all_neighbours(bombables, game_state)
             
         # Gets the neighbours of the target blocks
@@ -117,7 +125,15 @@ class Agent:
         self.occupied += self.check_bombs(game_state)
         self.add_new_bombs(game_state)
 
-        
+    # Checks that a block is accessible, ie not surrounded by iron
+    def check_accessable(self, game_state, neighbours):
+        breakables = []
+        for neighbour in neighbours:
+            if neighbour not in game_state.indestructible_blocks:
+                breakables.append(neighbour)
+        return breakables
+
+
     # Checks whether any bombs are exploding and updates accordingly
     def check_bombs(self, game_state):
         new_bombs = []
