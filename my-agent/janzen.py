@@ -321,10 +321,20 @@ class Bomb:
     def get_explosion(self, game_state):
         max_col, max_row = game_state.size
         x, y = self.pos
-        explosion = [(x,y), (x+1,y), (x-1,y), (x+2,y), (x-2,y),
-                     (x,y+1), (x,y-1), (x,y+2), (x,y-2)]
+
+        explosion = [(x,y), (x+1,y), (x-1,y), (x,y+1), (x,y-1)]
+        if (x+1,y) not in game_state.all_blocks:
+            explosion.append((x+2,y))
+        if (x-1,y) not in game_state.all_blocks:
+            explosion.append((x-2,y))
+        if (x,y+1) not in game_state.all_blocks:
+            explosion.append((x,y+2))
+        if (x,y-1) not in game_state.all_blocks:
+            explosion.append((x,y-2))
+                
         explosion = [e for e in explosion if (e[0]<max_col and e[0]>=0 
                                           and e[1]<max_row and e[1]>=0)]
+                                          
         return explosion
 
 
