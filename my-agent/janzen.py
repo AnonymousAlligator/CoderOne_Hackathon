@@ -62,11 +62,11 @@ class Agent:
     # Chooses a random position but tries to avoid blocks/danger
     def next_move_random(self, player_state):
         # Chooses the action, randomly
-        actions = ['u','d','l','r']
+        actions = ['u','d','l','r', '']
         action = random.choice(actions)
         
         # Choose best option
-        for k in range(0,4):
+        for k in range(0,len(actions)):
             if self.get_next_position(action, player_state.location) in self.occupied:
                 index = actions.index(action)
                 action = actions[(index+1)%len(actions)]
