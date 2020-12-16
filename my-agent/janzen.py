@@ -35,6 +35,11 @@ class Agent:
         # If no bombs, get ammo / treasures
         if action == '':
             action = self.next_move_BFS(game_state, player_state, self.items)
+        # If no items on the ground, bomb the enemy
+        if action == '' and self.bombables == []:
+            targets = game_state.opponents(self.id)
+            self.bombables = self.get_all_neighbours(targets, game_state)
+            action = self.next_move_bomb(game_state, player_state)
         # Otherwise, move randomly while avoiding danger
         if action == '':
             action = self.next_move_random(player_state)
@@ -110,10 +115,6 @@ class Agent:
         if bombables == []:
             targets = game_state.ore_blocks
             bombables = self.get_bombables(targets, game_state)
-        # 4) Once all blocks are gone/unreachable, attack the player
-        if bombables == []:
-            targets = game_state.opponents(self.id)
-            bombables = self.get_all_neighbours(targets, game_state)
             
         # Gets the neighbours of the target blocks
         self.bombables = bombables
@@ -186,7 +187,7 @@ class Agent:
         for ore in self.all_ores:
             if ore.pos == position:
                 ore.damage()
-                if ore.state <= 0:
+                if ore.state == 0:
                     self.all_ores.remove(ore)
                 return
     
@@ -203,7 +204,7 @@ class Agent:
     def get_damaged_ores(self):
         damaged_ores = []
         for ore in self.all_ores:
-            if ore.state <= 1:
+            if ore.state == 1:
                 damaged_ores.append(ore.pos)
         return damaged_ores
     
